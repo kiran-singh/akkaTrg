@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Windows.Forms.DataVisualization.Charting;
 using Akka.Actor;
 
 namespace ChartApp.Actors;
@@ -45,4 +47,6 @@ public class Metric
             Subscriber = subscriber;
         }
     }
+
+    public bool SeriesExistsIn(Dictionary<string,Series> index) => !string.IsNullOrEmpty(Series) && index.ContainsKey(Series);
 }

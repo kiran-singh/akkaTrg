@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Windows.Forms;
 using System.Windows.Forms.DataVisualization.Charting;
 using Akka.Actor;
 
@@ -41,26 +42,47 @@ namespace ChartApp.Actors
             }
 
             public string SeriesName { get; }
+
+            public bool NameExistsIn(Dictionary<string,Series> index) => !string.IsNullOrEmpty(SeriesName) && index.ContainsKey(SeriesName);
         }
+
+        public class TogglePause { }
 
         #endregion
 
         private readonly Chart _chart;
         private Dictionary<string, Series> _seriesIndex;
-
-        public ChartingActor(Chart chart) : this(chart, new Dictionary<string, Series>())
+        private readonly Button _pauseButton;
+        
+        public ChartingActor(Chart chart, Button pauseButton) : this(chart, new Dictionary<string, Series>(), pauseButton)
         {
         }
 
-        public ChartingActor(Chart chart, Dictionary<string, Series> seriesIndex)
+        public ChartingActor(Chart chart, Dictionary<string, Series> seriesIndex, Button pauseButton)
         {
             _chart = chart;
             _seriesIndex = seriesIndex;
+            _pauseButton = pauseButton;
 
             Receive<InitializeChart>(HandleInitialize);
             Receive<AddSeries>(HandleAddSeries);
             Receive<RemoveSeries>(HandleRemoveSeries);
             Receive<Metric>(HandleMetrics);
+            Receive<TogglePause>(pause =>
+            {
+                SetPauseButtonText(true);
+                BecomeStacked(Paused);
+            });
+        }
+        
+        private void Paused()
+        {
+            Receive<Metric>(HandleMetricsPaused);
+            Receive<TogglePause>(pause =>
+            {
+                SetPauseButtonText(false);
+                UnbecomeStacked();
+            });
         }
 
         private void HandleAddSeries(AddSeries series)
@@ -72,17 +94,7 @@ namespace ChartApp.Actors
             _chart.Series.Add(series.Series);
             SetChartBoundaries();
         }
-
-
-        //protected override void OnReceive(object message)
-        //{
-        //    if (message is InitializeChart)
-        //    {
-        //        var ic = message as InitializeChart;
-        //        HandleInitialize(ic);
-        //    }
-        //}
-
+        
         #region Individual Message Type Handlers
 
         private void HandleInitialize(InitializeChart ic)
@@ -119,7 +131,7 @@ namespace ChartApp.Actors
         
         private void HandleRemoveSeries(RemoveSeries series)
         {
-            if (!string.IsNullOrEmpty(series.SeriesName) && _seriesIndex.ContainsKey(series.SeriesName))
+            if (series.NameExistsIn(_seriesIndex))
             {
                 var seriesToRemove = _seriesIndex[series.SeriesName];
                 _seriesIndex.Remove(series.SeriesName);
@@ -130,11 +142,23 @@ namespace ChartApp.Actors
 
         private void HandleMetrics(Metric metric)
         {
-            if (!string.IsNullOrEmpty(metric.Series) && _seriesIndex.ContainsKey(metric.Series))
+            if (metric.SeriesExistsIn(_seriesIndex))
             {
                 var series = _seriesIndex[metric.Series];
                 series.Points.AddXY(xPosCounter++, metric.CounterValue);
                 while(series.Points.Count > MaxPoints) series.Points.RemoveAt(0);
+                SetChartBoundaries();
+            }
+        }
+        
+        private void HandleMetricsPaused(Metric metric)
+        {
+            if (metric.SeriesExistsIn(_seriesIndex))
+            {
+                var series = _seriesIndex[metric.Series];
+                if (series.Points == null) return; // means we're shutting down
+                series.Points.AddXY(xPosCounter++, 0.0d); //set the Y value to zero when we're paused
+                while (series.Points.Count > MaxPoints) series.Points.RemoveAt(0);
                 SetChartBoundaries();
             }
         }
@@ -159,5 +183,11 @@ namespace ChartApp.Actors
                 area.AxisY.Maximum = maxAxisY;
             }
         }
+        
+        private void SetPauseButtonText(bool paused)
+        {
+            _pauseButton.Text = $"{(!paused ? "PAUSE ||" : "RESUME ->")}";
+        }
+
     }
 }
