@@ -1,0 +1,2 @@
+# akkaTrg
+Akka .Net bootcamp
