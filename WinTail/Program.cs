@@ -10,28 +10,12 @@ Props consoleWriterProps = Props.Create<ConsoleWriterActor>();
 var consoleWriterActor = myActorSystem.ActorOf(consoleWriterProps, "consoleWriterActor");
 
 Props tailCoordinatorProps = Props.Create(() => new TailCoordinatorActor());
-IActorRef tailCoordinatorActor = myActorSystem.ActorOf(tailCoordinatorProps, "tailCoordinatorActor");
+myActorSystem.ActorOf(tailCoordinatorProps, "tailCoordinatorActor");
 
-Props fileValidatorActorProps = Props.Create(() => new FileValidatorActor(consoleWriterActor, tailCoordinatorActor));
-IActorRef fileValidatorActor = myActorSystem.ActorOf(fileValidatorActorProps, "validationActor");
+Props fileValidatorActorProps = Props.Create(() => new FileValidatorActor(consoleWriterActor));
+myActorSystem.ActorOf(fileValidatorActorProps, "validationActor");
 
-
-// // // make our first actors!
-// // IActorRef consoleWriterActor = myActorSystem.ActorOf(Props.Create(() => new ConsoleWriterActor()),
-// //     "consoleWriterActor");
-// // IActorRef consoleReaderActor =
-// //     myActorSystem.ActorOf(Props.Create(() => new ConsoleReaderActor(consoleWriterActor)),
-// //         "consoleReaderActor");
-//             
-// Props consoleWriterProps = Props.Create<ConsoleWriterActor>();
-// var consoleWriterActor = myActorSystem.ActorOf(consoleWriterProps, "consoleWriterActor");
-//             
-// Props validationActorProps = Props.Create(() => new ValidationActor(consoleWriterActor));
-//
-// IActorRef validationActor = myActorSystem.ActorOf(validationActorProps, "validationActor");
-//
-
-Props consoleReaderProps = Props.Create<ConsoleReaderActor>(fileValidatorActor);
+Props consoleReaderProps = Props.Create<ConsoleReaderActor>();
 IActorRef consoleReaderActor = myActorSystem.ActorOf(consoleReaderProps, "consoleReaderActor");
             
 // tell console reader to begin
