@@ -6,9 +6,19 @@ using Akka.Actor;
 
 namespace ChartApp.Actors
 {
-    public class ChartingActor : UntypedActor
+    public class ChartingActor : ReceiveActor
     {
         #region Messages
+
+        public class AddSeries
+        {
+            public Series Series { get; }
+
+            public AddSeries(Series series)
+            {
+                Series = series;
+            }
+        }
 
         public class InitializeChart
         {
@@ -33,16 +43,29 @@ namespace ChartApp.Actors
         {
             _chart = chart;
             _seriesIndex = seriesIndex;
+
+            Receive<InitializeChart>(HandleInitialize);
+            Receive<AddSeries>(HandleAddSeries);
         }
 
-        protected override void OnReceive(object message)
+        private void HandleAddSeries(AddSeries series)
         {
-            if (message is InitializeChart)
-            {
-                var ic = message as InitializeChart;
-                HandleInitialize(ic);
-            }
+            var seriesName = series.Series.Name;
+            if (string.IsNullOrEmpty(seriesName) || _seriesIndex.ContainsKey(seriesName)) return;
+
+            _seriesIndex.Add(seriesName, series.Series);
+            _chart.Series.Add(series.Series);
         }
+
+
+        //protected override void OnReceive(object message)
+        //{
+        //    if (message is InitializeChart)
+        //    {
+        //        var ic = message as InitializeChart;
+        //        HandleInitialize(ic);
+        //    }
+        //}
 
         #region Individual Message Type Handlers
 
