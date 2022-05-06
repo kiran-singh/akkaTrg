@@ -7,7 +7,7 @@ using Akka.Actor;
 
 namespace ChartApp.Actors
 {
-    public class ChartingActor : ReceiveActor
+    public class ChartingActor : ReceiveActor, IWithUnboundedStash
     {
         public const int MaxPoints = 250;
         private int xPosCounter = 0;
@@ -54,6 +54,8 @@ namespace ChartApp.Actors
         private Dictionary<string, Series> _seriesIndex;
         private readonly Button _pauseButton;
         
+        public IStash Stash { get; set; }
+
         public ChartingActor(Chart chart, Button pauseButton) : this(chart, new Dictionary<string, Series>(), pauseButton)
         {
         }
@@ -77,11 +79,14 @@ namespace ChartApp.Actors
         
         private void Paused()
         {
+            Receive<AddSeries>(addSeries => Stash.Stash());
+            Receive<RemoveSeries>(removeSeries => Stash.Stash());
             Receive<Metric>(HandleMetricsPaused);
             Receive<TogglePause>(pause =>
             {
                 SetPauseButtonText(false);
                 UnbecomeStacked();
+                Stash.UnstashAll();
             });
         }
 
@@ -188,6 +193,5 @@ namespace ChartApp.Actors
         {
             _pauseButton.Text = $"{(!paused ? "PAUSE ||" : "RESUME ->")}";
         }
-
     }
 }
